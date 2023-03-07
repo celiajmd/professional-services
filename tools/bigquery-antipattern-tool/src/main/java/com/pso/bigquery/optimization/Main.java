@@ -8,29 +8,37 @@ import java.util.List;
 
 import static com.pso.bigquery.optimization.util.ZetaSQLHelperConstants.*;
 import org.apache.commons.cli.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class Main {
+    public static String getInputQuery(String[] args)throws ParseException, IOException{
 
-    public static void main(String[] args) throws ParseException {
-
-        String query_str =
-                "\n" +
-                        "SELECT " +
-                        "   t1.*, " +
-                        "   t2.col2 " +
-                        "FROM \n" +
-                        "  (SELECT * FROM `project.dataset.table1`) t1\n" +
-                        "LEFT JOIN\n" +
-                        "  `project.dataset.table2` t2\n ON t1.col1 = t2.col2";
+        String query_str = "\n" +
+                "SELECT " +
+                "   t1.*, " +
+                "   t2.col2 " +
+                "FROM \n" +
+                "  (SELECT * FROM `project.dataset.table1`) t1\n" +
+                "LEFT JOIN\n" +
+                "  `project.dataset.table2` t2\n ON t1.col1 = t2.col2";;
 
         Options options = new Options();
 
         Option query = Option.builder("query")
                 .argName("query")
                 .hasArg()
-                .required(true)
+                .required(false)
                 .desc("set query").build();
         options.addOption(query);
+
+        Option file_path = Option.builder("file_path")
+                .argName("file_path")
+                .hasArg()
+                .required(false)
+                .desc("set file path").build();
+        options.addOption(file_path);
 
         CommandLine cmd;
         CommandLineParser parser = new BasicParser();
@@ -42,11 +50,27 @@ public class Main {
                 query_str = cmd.getOptionValue("query");
                 System.out.println("query detected as " + query_str);
             }
+            else if(cmd.hasOption("file_path")){
+                String file_path_str = cmd.getOptionValue("file_path");
+                Path file_name = Path.of(file_path_str);
+                query_str = Files.readString(file_name);
+                System.out.println("file path detected as " + file_path_str);
+            }
         } catch (org.apache.commons.cli.ParseException e) {
             System.out.println(e.getMessage());
             helper.printHelp("Usage:", options);
             System.exit(0);
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
+            helper.printHelp("Usage:", options);
+            System.exit(0);
         }
+        return query_str;
+    }
+
+
+    public static void main(String[] args) throws ParseException, IOException{
+        String query_str = getInputQuery(args);
 
         String billing_project = MY_PROJET;
         SimpleCatalog catalog =  new SimpleCatalog(CATALOG_NAME);
